@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OJ Online Judge</title>
+    <link rel="stylesheet" href="/frontend/css/style.css">
+</head>
+<body>
+    <nav id="navbar">
+        <a class="nav-brand" href="#" onclick="showPage('problems'); loadProblems(); return false;">OJ</a>
+        <a href="#" id="problems-link" onclick="showPage('problems'); loadProblems(); return false;">题目列表</a>
+        <a href="#" id="submissions-link" style="display:none" onclick="showPage('submissions'); loadMySubmissions(); return false;">我的提交</a>
+        <a href="#" id="teacher-link" style="display:none" onclick="showPage('teacher'); loadTeacherProblems(); return false;">题目管理</a>
+        <a href="#" id="teacher-sub-link" style="display:none" onclick="showPage('teacher-submissions'); loadTeacherSubmissions(); return false;">提交管理</a>
+        <a href="#" id="teacher-log-link" style="display:none" onclick="showPage('teacher-logs'); loadTeacherLogs(); return false;">测试点日志</a>
+        <a href="#" id="similarity-link" style="display:none" onclick="showPage('similarity'); return false;">查重</a>
+        <a href="#" id="admin-link" style="display:none" onclick="showPage('admin'); loadUsers(); return false;">管理面板</a>
+        <span id="user-info"></span>
+        <a href="#" id="profile-link" style="display:none" onclick="showPage('profile'); return false;">修改密码</a>
+        <a href="#" id="login-link" onclick="showPage('login'); return false;">登录</a>
+        <a href="#" id="logout-link" style="display:none" onclick="logout(); return false;">登出</a>
+    </nav>
+
+    <!-- 登录页 -->
+    <div id="page-login" class="auth-page">
+        <div class="auth-card">
+            <h2>登录</h2>
+            <input id="login-username" placeholder="用户名">
+            <input id="login-password" type="password" placeholder="密码">
+            <div class="btn-row">
+                <button class="btn-success" onclick="doLogin()">登录</button>
+                <button class="btn-secondary" onclick="showPage('register')">注册新账号</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册页 -->
+    <div id="page-register" style="display:none" class="auth-page">
+        <div class="auth-card">
+            <h2>注册</h2>
+            <input id="reg-username" placeholder="用户名 (3-32字符)">
+            <input id="reg-password" type="password" placeholder="密码 (至少8字符)">
+            <div class="btn-row">
+                <button class="btn-success" onclick="doRegister()">注册</button>
+                <button class="btn-secondary" onclick="showPage('login')">返回登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码页 -->
+    <div id="page-profile" style="display:none">
+        <h2>修改密码</h2>
+        <div class="card form-card" style="max-width:400px;">
+            <label>旧密码 <input id="cp-old-password" type="password" placeholder="输入当前密码"></label>
+            <label>新密码 <input id="cp-new-password" type="password" placeholder="新密码 (至少8字符)"></label>
+            <label>确认新密码 <input id="cp-confirm-password" type="password" placeholder="再次输入新密码"></label>
+            <div class="pf-error" id="cp-error"></div>
+            <div class="btn-row">
+                <button class="btn-success" onclick="doChangePassword()">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 题目列表 -->
+    <div id="page-problems" style="display:none">
+        <h2>题目列表</h2>
+        <div class="search-bar">
+            <input id="problem-filter" placeholder="按关键词筛选" oninput="filterProblems()">
+            <input id="problem-search" placeholder="输入题目编号查询" onkeydown="if(event.key==='Enter') queryProblemById()">
+            <button onclick="queryProblemById()">查询</button>
+        </div>
+        <div id="problem-search-result"></div>
+        <div id="problem-list"></div>
+    </div>
+
+    <!-- 题目详情 -->
+    <div id="page-problem-detail" style="display:none">
+        <div class="card">
+            <h2 id="problem-title"></h2>
+            <div id="problem-desc"></div>
+            <h3>提交代码</h3>
+            <div style="margin-bottom:8px;">
+                <label>语言：
+                    <select id="code-language">
+                        <option value="python" selected>Python</option>
+                    </select>
+                </label>
+            </div>
+            <textarea id="code-input" rows="12" placeholder="在此输入Python代码..."></textarea>
+            <button class="btn-success" onclick="submitCode()">提交</button>
+            <div id="submit-result"></div>
+        </div>
+    </div>
+
+    <!-- 我的提交 -->
+    <div id="page-submissions" style="display:none">
+        <h2>我的提交</h2>
+        <div class="filter-toggle" onclick="this.nextElementSibling.classList.toggle('filter-hidden')">▼ 筛选条件</div>
+        <div class="filter-bar filter-multi filter-hidden">
+            <input id="my-sub-filter-id" placeholder="提交ID">
+            <input id="my-sub-filter-problem" placeholder="题目编号">
+            <select id="my-sub-filter-status">
+                <option value="">全部状态</option>
+                <option value="pending">pending</option>
+                <option value="running">running</option>
+                <option value="finished">finished</option>
+                <option value="failed">failed</option>
+            </select>
+            <select id="my-sub-filter-result">
+                <option value="">全部结果</option>
+                <option value="AC">AC</option>
+                <option value="WA">WA</option>
+                <option value="RE">RE</option>
+                <option value="TLE">TLE</option>
+                <option value="SE">SE</option>
+            </select>
+            <input id="my-sub-filter-start" type="datetime-local" title="开始时间">
+            <input id="my-sub-filter-end" type="datetime-local" title="结束时间">
+            <button class="btn-secondary" onclick="loadMySubmissions(1)">筛选</button>
+        </div>
+        <div id="submission-list"></div>
+    </div>
+
+    <!-- 提交详情 -->
+    <div id="page-submission-detail" style="display:none">
+        <button class="btn-secondary" onclick="showPage('submissions'); loadMySubmissions();">← 返回提交列表</button>
+        <div id="submission-detail"></div>
+    </div>
+
+    <!-- 教师题目管理 -->
+    <div id="page-teacher" style="display:none">
+        <h2>题目管理</h2>
+        <div style="margin-bottom:12px;">
+            <button class="btn-success" onclick="showCreateProblem()">+ 创建题目</button>
+            <input id="teacher-problem-filter" placeholder="搜索题目（标题、描述、标签等）" style="margin-left:12px; padding:6px; width:250px;" oninput="filterTeacherProblems()">
+        </div>
+        <div id="teacher-problem-list"></div>
+    </div>
+
+    <!-- 题目表单 -->
+    <div id="page-problem-form" style="display:none">
+        <h2 id="problem-form-title">创建题目</h2>
+        <div class="card form-card">
+            <label>题目编号 <input id="pf-id" placeholder="如 P1001"></label>
+            <label>标题 <input id="pf-title" placeholder="题目标题"></label>
+            <label>描述 <textarea id="pf-description" rows="4"></textarea></label>
+            <label>输入说明 <textarea id="pf-input-desc" rows="2"></textarea></label>
+            <label>输出说明 <textarea id="pf-output-desc" rows="2"></textarea></label>
+            <label>样例 (JSON) <textarea id="pf-samples" rows="3">[{"input":"1 2\n","output":"3\n"}]</textarea></label>
+            <label>约束条件 <input id="pf-constraints"></label>
+            <label>时间限制(秒) <input id="pf-time-limit" type="number" step="0.1" value="1.0"></label>
+            <label>内存限制(MB) <input id="pf-memory-limit" type="number" value="128"></label>
+            <label>难度 <select id="pf-difficulty"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select></label>
+            <label>标签 (逗号分隔) <input id="pf-tags" placeholder="数组, 动态规划"></label>
+            <label>测试点 (JSON) <textarea id="pf-test-cases" rows="5"></textarea></label>
+            <label>评测模式 <select id="pf-judge-mode" onchange="toggleSpjField()"><option value="standard">standard (规范化比较)</option><option value="strict">strict (严格比对)</option><option value="spj">spj (Special Judge)</option></select></label>
+            <div id="spj-code-group" style="display:none">
+                <label>SPJ 代码 (Python，需定义 judge 函数) <textarea id="pf-spj-code" rows="8" placeholder="def judge(input_data, expected_output, actual_output):&#10;    return {'accepted': True, 'score': 100, 'message': 'ok'}"></textarea></label>
+            </div>
+            <div class="pf-error" id="pf-error"></div>
+            <div class="btn-row">
+                <button class="btn-success" onclick="saveProblem()">保存</button>
+                <button class="btn-secondary" onclick="showPage('teacher'); loadTeacherProblems();">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 教师提交管理 -->
+    <div id="page-teacher-submissions" style="display:none">
+        <h2>提交管理</h2>
+        <div class="filter-toggle" onclick="this.nextElementSibling.classList.toggle('filter-hidden')">▼ 筛选条件</div>
+        <div class="filter-bar filter-multi filter-hidden">
+            <input id="ts-filter-id" placeholder="提交ID">
+            <input id="ts-filter-problem" placeholder="题目编号">
+            <input id="ts-filter-user" placeholder="用户ID">
+            <select id="ts-filter-status">
+                <option value="">全部状态</option>
+                <option value="pending">pending</option>
+                <option value="running">running</option>
+                <option value="finished">finished</option>
+                <option value="failed">failed</option>
+            </select>
+            <select id="ts-filter-result">
+                <option value="">全部结果</option>
+                <option value="AC">AC</option>
+                <option value="WA">WA</option>
+                <option value="RE">RE</option>
+                <option value="TLE">TLE</option>
+                <option value="SE">SE</option>
+            </select>
+            <input id="ts-filter-start" type="datetime-local" title="开始时间">
+            <input id="ts-filter-end" type="datetime-local" title="结束时间">
+            <button class="btn-secondary" onclick="loadTeacherSubmissions(1)">筛选</button>
+        </div>
+        <div id="teacher-submission-list"></div>
+    </div>
+
+    <!-- 教师测试点日志 -->
+    <div id="page-teacher-logs" style="display:none">
+        <h2>测试点日志</h2>
+        <div class="filter-toggle" onclick="this.nextElementSibling.classList.toggle('filter-hidden')">▼ 筛选条件</div>
+        <div class="filter-bar filter-multi filter-hidden">
+            <input id="log-filter-submission" placeholder="提交ID">
+            <input id="log-filter-problem" placeholder="题目编号">
+            <input id="log-filter-user" placeholder="用户ID">
+            <select id="log-filter-result">
+                <option value="">全部结果</option>
+                <option value="AC">AC</option>
+                <option value="WA">WA</option>
+                <option value="RE">RE</option>
+                <option value="TLE">TLE</option>
+                <option value="SE">SE</option>
+            </select>
+            <input id="log-filter-start" type="datetime-local" title="开始时间">
+            <input id="log-filter-end" type="datetime-local" title="结束时间">
+            <button class="btn-secondary" onclick="loadTeacherLogs(1)">筛选</button>
+        </div>
+        <div id="teacher-log-list"></div>
+    </div>
+
+    <!-- 代码相似度检测 -->
+    <div id="page-similarity" style="display:none">
+        <h2>代码相似度检测</h2>
+        <div class="card form-card">
+            <label>题目编号 <input id="sim-problem-id" placeholder="如 P1001"></label>
+            <label>提交ID列表（逗号、空格或换行分隔）<textarea id="sim-submission-ids" rows="4" placeholder="粘贴多个 submission_id，每行一个或用逗号分隔"></textarea></label>
+            <div class="btn-row">
+                <button class="btn-success" onclick="runSimilarityCheck()">开始检测</button>
+                <button class="btn-secondary" onclick="loadSimilarityReports()">查看历史报告</button>
+            </div>
+            <div id="sim-result" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <!-- 管理面板 -->
+    <div id="page-admin" style="display:none">
+        <h2>管理面板</h2>
+        <div class="admin-tabs">
+            <button class="btn-secondary" onclick="document.getElementById('admin-users-section').style.display=''; document.getElementById('admin-backup-section').style.display='none'; document.getElementById('admin-audit-section').style.display='none'; loadUsers();">用户管理</button>
+            <button class="btn-secondary" onclick="document.getElementById('admin-users-section').style.display='none'; document.getElementById('admin-backup-section').style.display=''; document.getElementById('admin-audit-section').style.display='none'; loadBackups();">备份管理</button>
+            <button class="btn-secondary" onclick="document.getElementById('admin-users-section').style.display='none'; document.getElementById('admin-backup-section').style.display='none'; document.getElementById('admin-audit-section').style.display=''; loadAuditLogs();">审计日志</button>
+        </div>
+
+        <!-- 用户管理 -->
+        <div id="admin-users-section">
+            <h3>用户列表</h3>
+            <div class="filter-bar">
+                <input id="user-filter-username" placeholder="用户名查询" onkeydown="if(event.key==='Enter') loadUsers()">
+                <select id="user-filter-role" onchange="loadUsers()">
+                    <option value="">全部角色</option>
+                    <option value="student">student</option>
+                    <option value="teacher">teacher</option>
+                    <option value="admin">admin</option>
+                </select>
+                <select id="user-filter-status" onchange="loadUsers()">
+                    <option value="">全部状态</option>
+                    <option value="active">启用</option>
+                    <option value="inactive">禁用</option>
+                </select>
+                <button class="btn-secondary" onclick="loadUsers(1)">筛选</button>
+            </div>
+            <div id="user-list"></div>
+        </div>
+
+        <!-- 备份管理 -->
+        <div id="admin-backup-section" style="display:none">
+            <h3>备份管理</h3>
+            <button class="btn-success" onclick="doCreateBackup()">创建备份</button>
+            <div id="backup-list" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- 审计日志 -->
+        <div id="admin-audit-section" style="display:none">
+            <h3>审计日志</h3>
+            <div class="filter-toggle" onclick="this.nextElementSibling.classList.toggle('filter-hidden')">▼ 筛选条件</div>
+            <div class="filter-bar filter-multi filter-hidden">
+                <input id="audit-filter-operator" placeholder="操作者ID">
+                <input id="audit-filter-action" placeholder="操作类型">
+                <input id="audit-filter-target" placeholder="目标ID">
+                <input id="audit-filter-start" type="datetime-local" title="开始时间">
+                <input id="audit-filter-end" type="datetime-local" title="结束时间">
+                <button class="btn-secondary" onclick="loadAuditLogs(1)">筛选</button>
+            </div>
+            <div id="audit-log-list"></div>
+        </div>
+    </div>
+
+    <script src="/frontend/js/app.js"></script>
+    <script src="/frontend/js/auth.js"></script>
+    <script src="/frontend/js/problems.js"></script>
+    <script src="/frontend/js/submissions.js"></script>
+    <script src="/frontend/js/users.js"></script>
+</body>
+</html>

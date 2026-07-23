@@ -16,3 +16,9 @@ data/backups/
 
 # Test cache
 .pytest_cache/
+
+
+#cookie
+cookies.txt
+
+

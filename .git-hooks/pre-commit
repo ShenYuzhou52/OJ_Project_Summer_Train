@@ -1,0 +1,19 @@
+#!/bin/sh
+# Git pre-commit hook
+# 防止意外提交 Python 缓存文件
+
+echo "Checking for Python cache files..."
+
+# 检查是否有缓存文件被添加到暂存区
+if git diff --cached --name-only | grep -E "\.pyc$|__pycache__|\.pyo$|\.pyd$"; then
+    echo "❌ Error: Python cache files found in staging area!"
+    echo "   Please remove them before committing:"
+    echo "   git rm --cached <file>"
+    echo ""
+    echo "   Or clean all cache:"
+    echo "   make clean"
+    exit 1
+fi
+
+echo "✓ No cache files found"
+exit 0
