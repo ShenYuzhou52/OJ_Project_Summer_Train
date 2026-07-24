@@ -139,7 +139,7 @@ async function submitCode() {
     }
 }
 
-async function pollSubmission(submissionId) {
+async function pollSubmission(submissionId) {  //轮询实现
     const check = async () => {
         const res = await api('GET', `/api/submissions/${submissionId}`);
         if (res.code !== 200) return;

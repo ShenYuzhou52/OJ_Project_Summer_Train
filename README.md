@@ -31,13 +31,14 @@ pytest
 - 首次启动时自动创建，配置项位于 `app/config.py` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD`
 
 ## 使用的持久化方式
-- SQLite（方式 B），使用 aiosqlite 异步访问
+- SQLite，使用 aiosqlite 异步访问
 
-## 数据文件位置
+## 数据文件位置（已在.gitignore）
 - 数据库文件：`data/oj.db`
 
-## 备份文件位置
+## 备份文件位置（已在.gitignore）
 - 备份目录：`data/backups/`
+
 
 ## 前端安装与启动命令
 - 前端为原生 HTML/CSS/JavaScript，无需额外安装
@@ -71,5 +72,6 @@ oj_project/
 
 ## 限制
 - 仅支持 Python 语言评测
+- sqj评测不稳定
 - 评测未使用完整沙箱隔离
 - 前端为简单单页应用，未使用前端框架

@@ -38,7 +38,7 @@ async function loadMySubmissions(page = 1) {
     html += renderPagination(page, total, PAGE_SIZE, 'loadMySubmissions');
     list.innerHTML = html;
 }
-
+//向路由发送，获取detail所需的log信息，subRes,logRes,然后组装html
 async function loadSubmissionDetail(id) {
     const [subRes, logRes] = await Promise.all([
         api('GET', `/api/submissions/${id}`),

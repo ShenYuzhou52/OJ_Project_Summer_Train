@@ -79,7 +79,7 @@ try:
     if not isinstance(result, dict):
         print(json.dumps({{"accepted": False, "score": 0, "message": "SPJ must return a dict"}}))
         sys.exit(1)
-    print(json.dumps(result))
+    print(json.dumps(result, ensure_ascii=False))
 except Exception as e:
     print(json.dumps({{"accepted": False, "score": 0, "message": f"SPJ exception: {{str(e)[:200]}}"}}, ensure_ascii=False))
     sys.exit(1)
@@ -87,54 +87,14 @@ except Exception as e:
         with open(spj_file, "w", encoding="utf-8") as f:
             f.write(spj_script)
 
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, spj_file,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        # 使用同步 subprocess 在线程池中运行，避免 Windows 事件循环兼容问题
+        import subprocess
+        loop = asyncio.get_running_loop()
+        spj_run_result = await loop.run_in_executor(
+            None, _run_spj_subprocess_sync, sys.executable, spj_file, tmp_dir
         )
-        try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=SPJ_TIMEOUT)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.wait()
-            return {"accepted": False, "score": 0, "message": "SPJ timeout", "result": "SE"}
+        return spj_run_result
 
-        stdout_str = stdout_bytes.decode("utf-8", errors="replace").strip()
-        stderr_str = stderr_bytes.decode("utf-8", errors="replace").strip()
-
-        if len(stdout_str) > SPJ_MAX_OUTPUT:
-            stdout_str = stdout_str[:SPJ_MAX_OUTPUT]
-
-        if proc.returncode != 0:
-            err_msg = stderr_str[:200] if stderr_str else "SPJ runtime error"
-            err_msg = sanitize_error_message(err_msg)
-            return {"accepted": False, "score": 0, "message": f"SPJ error: {err_msg}", "result": "SE"}
-
-        if not stdout_str:
-            return {"accepted": False, "score": 0, "message": "SPJ produced no output", "result": "SE"}
-
-        spj_result = json.loads(stdout_str)
-
-        # 校验 SPJ 返回值类型
-        if not isinstance(spj_result, dict):
-            return {"accepted": False, "score": 0, "message": "SPJ output is not a JSON object", "result": "SE"}
-        if "accepted" not in spj_result:
-            return {"accepted": False, "score": 0, "message": "SPJ output missing 'accepted' field", "result": "SE"}
-        if not isinstance(spj_result["accepted"], bool):
-            return {"accepted": False, "score": 0, "message": "SPJ 'accepted' field must be boolean", "result": "SE"}
-
-        # 脱敏：限制 message 长度并去除路径信息
-        if "message" in spj_result:
-            msg = str(spj_result["message"])
-            msg = sanitize_error_message(msg)
-            if len(msg) > 200:
-                msg = msg[:200] + "..."
-            spj_result["message"] = msg
-
-        return spj_result
-
-    except json.JSONDecodeError:
-        return {"accepted": False, "score": 0, "message": "SPJ output is not valid JSON", "result": "SE"}
     except Exception as e:
         return {"accepted": False, "score": 0, "message": f"SPJ system error: {str(e)[:100]}", "result": "SE"}
     finally:
@@ -142,3 +102,67 @@ except Exception as e:
             shutil.rmtree(tmp_dir, ignore_errors=True)
         except Exception:
             pass
+
+
+def _run_spj_subprocess_sync(python_executable: str, spj_file: str, cwd: str) -> dict:
+    """同步运行 SPJ 子进程，在线程池中调用以避免 Windows 事件循环问题。"""
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            [python_executable, spj_file],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            timeout=SPJ_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return {"accepted": False, "score": 0, "message": "SPJ timeout", "result": "SE"}
+    except Exception as e:
+        return {"accepted": False, "score": 0, "message": f"SPJ system error: {str(e)[:100]}", "result": "SE"}
+
+    stdout_str = proc.stdout.decode("utf-8", errors="replace").strip()
+    stderr_str = proc.stderr.decode("utf-8", errors="replace").strip()
+
+    if len(stdout_str) > SPJ_MAX_OUTPUT:
+        stdout_str = stdout_str[:SPJ_MAX_OUTPUT]
+
+    if not stdout_str:
+        if proc.returncode != 0:
+            err_msg = stderr_str[:200] if stderr_str else "SPJ runtime error"
+            err_msg = sanitize_error_message(err_msg)
+            return {"accepted": False, "score": 0, "message": f"SPJ error: {err_msg}", "result": "SE"}
+        return {"accepted": False, "score": 0, "message": "SPJ produced no output", "result": "SE"}
+
+    # 尝试解析 stdout 的最后一行作为 JSON 结果
+    # （SPJ 脚本最终 print 的 JSON 总是在最后一行）
+    stdout_lines = stdout_str.strip().split("\n")
+    json_line = stdout_lines[-1].strip()
+
+    try:
+        spj_result = json.loads(json_line)
+    except json.JSONDecodeError:
+        # 如果最后一行也不是 JSON，才判定为 SE
+        if proc.returncode != 0:
+            err_msg = stderr_str[:200] if stderr_str else "SPJ runtime error"
+            err_msg = sanitize_error_message(err_msg)
+            return {"accepted": False, "score": 0, "message": f"SPJ error: {err_msg}", "result": "SE"}
+        return {"accepted": False, "score": 0, "message": "SPJ output is not valid JSON", "result": "SE"}
+
+    # 校验 SPJ 返回值类型
+    if not isinstance(spj_result, dict):
+        return {"accepted": False, "score": 0, "message": "SPJ output is not a JSON object", "result": "SE"}
+    if "accepted" not in spj_result:
+        return {"accepted": False, "score": 0, "message": "SPJ output missing 'accepted' field", "result": "SE"}
+    if not isinstance(spj_result["accepted"], bool):
+        return {"accepted": False, "score": 0, "message": "SPJ 'accepted' field must be boolean", "result": "SE"}
+
+    # 脱敏：限制 message 长度并去除路径信息
+    if "message" in spj_result:
+        msg = str(spj_result["message"])
+        msg = sanitize_error_message(msg)
+        if len(msg) > 200:
+            msg = msg[:200] + "..."
+        spj_result["message"] = msg
+
+    return spj_result

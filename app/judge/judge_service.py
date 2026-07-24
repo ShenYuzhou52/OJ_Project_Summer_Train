@@ -10,6 +10,7 @@ from app.judge.runner import run_single_case
 from app.judge.comparator import compare_output, compare_strict, run_spj
 from app.utils.sanitize import truncate_text, sanitize_error_message
 from app.repositories import submission_repo, judge_log_repo, problem_repo
+from app.repositories.audit_log_repo import create_audit_log
 from app.utils.time_utils import now_utc
 
 
@@ -36,6 +37,9 @@ async def judge_submission(submission_id: str):
     await submission_repo.update_submission_status(
         submission_id, "running", started_at=now_utc()
     )
+
+    # 审计日志：评测开始
+    await create_audit_log("system", "JUDGE_STARTED", "submission", submission_id)
 
     try:
         submission = await submission_repo.get_submission_by_id(submission_id)
@@ -70,6 +74,18 @@ async def judge_submission(submission_id: str):
                 score = 0
                 message = "Time Limit Exceeded" if case_result == "TLE" else "System Error"
                 stop_early = True
+
+                # 审计日志：发生超时 / 发生评测系统错误
+                if case_result == "TLE":
+                    await create_audit_log(
+                        "system", "JUDGE_TLE", "submission", submission_id,
+                        detail=f"case_id={tc['case_id']}, time_used={time_used:.3f}s"
+                    )
+                else:
+                    await create_audit_log(
+                        "system", "JUDGE_SYSTEM_ERROR", "submission", submission_id,
+                        detail=f"case_id={tc['case_id']}, stderr={truncate_text(stderr, 200)}"
+                    )
             elif raw_result["exit_code"] != 0:
                 case_result = "RE"
                 exit_code = raw_result["exit_code"]
@@ -79,6 +95,12 @@ async def judge_submission(submission_id: str):
                 score = 0
                 message = "Runtime Error"
                 stop_early = True
+
+                # 审计日志：发生运行错误
+                await create_audit_log(
+                    "system", "JUDGE_RUNTIME_ERROR", "submission", submission_id,
+                    detail=f"case_id={tc['case_id']}, exit_code={exit_code}"
+                )
             else:
                 exit_code = raw_result["exit_code"]
                 stdout = raw_result["stdout"]
@@ -93,6 +115,11 @@ async def judge_submission(submission_id: str):
                         score = 0
                         message = spj_result.get("message", "SPJ Error")
                         stop_early = True
+                        # 审计日志：SPJ 系统错误
+                        await create_audit_log(
+                            "system", "JUDGE_SYSTEM_ERROR", "submission", submission_id,
+                            detail=f"case_id={tc['case_id']}, SPJ error: {message}"
+                        )
                     elif spj_result.get("accepted"):
                         case_result = "AC"
                         score = tc["score"]
@@ -139,6 +166,12 @@ async def judge_submission(submission_id: str):
                 is_hidden=tc["is_hidden"]
             )
 
+            # 审计日志：每个测试点执行结束
+            await create_audit_log(
+                "system", "JUDGE_CASE_FINISHED", "submission", submission_id,
+                detail=f"case_id={tc['case_id']}, result={case_result}, score={score}"
+            )
+
             case_results.append({"case_id": tc["case_id"], "result": case_result, "score": score})
 
         final_result = determine_final_result(case_results)
@@ -151,6 +184,12 @@ async def judge_submission(submission_id: str):
             finished_at=now_utc()
         )
 
+        # 审计日志：整次评测结束
+        await create_audit_log(
+            "system", "JUDGE_FINISHED", "submission", submission_id,
+            detail=f"result={final_result}, score={total_score}, total_time={total_time:.3f}s"
+        )
+
     except Exception as e:
         import traceback
         print(f"[JUDGE ERROR] submission {submission_id}: {str(e)}", flush=True)
@@ -159,4 +198,10 @@ async def judge_submission(submission_id: str):
         await submission_repo.update_submission_status(
             submission_id, "failed", result="SE",
             finished_at=now_utc()
+        )
+
+        # 审计日志：发生评测系统错误（异常级别）
+        await create_audit_log(
+            "system", "JUDGE_SYSTEM_ERROR", "submission", submission_id,
+            detail=f"exception: {str(e)[:200]}"
         )

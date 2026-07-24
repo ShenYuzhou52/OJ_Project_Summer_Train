@@ -14,6 +14,9 @@ async def create_and_judge(user_id: str, problem_id: str, language: str, source_
         submission_id, user_id, problem_id, language, source_code
     )
 
+    # 审计日志：收到提交
+    await create_audit_log(user_id, "SUBMISSION_RECEIVED", "submission", submission_id)
+
     # 使用 FastAPI 的 BackgroundTasks 确保任务能够正确执行
     background_tasks.add_task(judge_submission, submission_id)
 

@@ -1,6 +1,6 @@
 let _authErrorTimer = null;
 
-async function doLogin() {
+async function doLogin() {//前端DOM抓取username和password信息，交给auth login路由，路由返回统一格式，借此可判断是否登录成功    
     const username = document.getElementById('login-username').value.trim();//移除前后空白字符
     const password = document.getElementById('login-password').value;
     if (!username || !password) {

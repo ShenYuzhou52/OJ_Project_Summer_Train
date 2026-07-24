@@ -14,6 +14,7 @@
 - 使用 SQLite 实现了数据持久化、备份与恢复，建立了用户、题目、测试点、提交、评测日志和审计日志表，服务重启后能够恢复全部主要数据。管理员可以备份与恢复数据库。
 - 学生前端界面包括登录、题目浏览、题目详情页及代码提交、“我的提交”中的评测状态、结果和过往提交的查询。教师前端界面还包括题目管理、所有提交的管理界面、测试点日志界面、查重界面。管理员前端界面还包括管理面板界面，支持用户管理、备份管理和审计日志查询。处理了未登录、权限不足等异常状况。
 - 进阶模块中，实现了Special Judge和Similarity Check。
+- 已开源至个人仓库
 
 ### 未完成功能
 - 进阶模块中的安全隔离部分
@@ -423,12 +424,6 @@ async function api(method, path, body = null) {
 
 这样配置后，浏览器会在每次请求中自动携带 session cookie，后端才能通过 cookie 中的 session_id 查找到对应的 session 数据，从而获取 `user_id` 完成身份验证。
 
-**技术要点：**
-- `credentials: 'include'`：跨域和同源请求都会携带凭据（Cookie、HTTP 认证等）
-- `credentials: 'same-origin'`（默认）：仅同源请求携带凭据
-- `credentials: 'omit'`：任何情况都不携带凭据
-
-对于生产环境的跨域场景，还需要后端配置 CORS 允许凭据传递（`Access-Control-Allow-Credentials: true`）并指定明确的 `Access-Control-Allow-Origin`（不能使用通配符 `*`）。
 
 ### 问题二：评测全部返回 SE
 
