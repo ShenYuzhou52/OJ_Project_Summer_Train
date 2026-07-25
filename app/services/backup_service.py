@@ -13,6 +13,14 @@ async def create_backup(operator_id: str) -> dict:
     backup_dir = os.path.join(_cfg.BACKUP_DIR, backup_id)
     os.makedirs(backup_dir, exist_ok=True)
 
+    # WAL checkpoint：确保所有 WAL 内容写入主数据库文件再备份
+    from app.repositories.database import get_db
+    db = await get_db()
+    try:
+        await db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        await db.close()
+
     # 复制数据库文件
     db_backup_path = os.path.join(backup_dir, "oj.db")
     shutil.copy2(_cfg.DB_PATH, db_backup_path)

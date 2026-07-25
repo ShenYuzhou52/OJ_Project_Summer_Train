@@ -27,11 +27,27 @@ async def get_submission_by_id(submission_id: str) -> dict | None:
         await db.close()
 
 
+# 合法状态转换表
+_VALID_TRANSITIONS = {
+    "pending": {"running", "failed"},
+    "running": {"finished", "failed"},
+}
+
+
 async def update_submission_status(submission_id: str, status: str, result: str | None = None,
                                     score: int | None = None, total_time: float | None = None,
                                     started_at: str | None = None, finished_at: str | None = None):
     db = await get_db()
     try:
+        # 校验状态转换合法性
+        cursor = await db.execute("SELECT status FROM submissions WHERE id = ?", (submission_id,))
+        row = await cursor.fetchone()
+        if row:
+            current_status = row[0]
+            allowed = _VALID_TRANSITIONS.get(current_status, set())
+            if status not in allowed:
+                return  # 非法转换，静默忽略
+
         sets = ["status = ?"]
         params = [status]
         if result is not None:

@@ -11,15 +11,22 @@ from app.utils.time_utils import now_utc
 
 
 def strip_comments_and_blanks(code: str) -> str:
-    """删除空行和注释"""
-    lines = code.split('\n')
-    result = []
-    for line in lines:
-        # 去除行内注释
-        stripped = line.split('#')[0].rstrip()
-        if stripped.strip():
-            result.append(stripped)
-    return '\n'.join(result)
+    """使用 tokenize 正确删除注释和空行"""
+    import tokenize
+    import io
+
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(code).readline))
+        # 过滤掉 COMMENT token，保留其余
+        filtered = [tok for tok in tokens if tok.type != tokenize.COMMENT]
+        cleaned = tokenize.untokenize(filtered)
+    except tokenize.TokenizeError:
+        # tokenize 失败，回退到简单去空行
+        cleaned = code
+
+    # 去除空行
+    lines = [line for line in cleaned.split('\n') if line.strip()]
+    return '\n'.join(lines)
 
 
 def normalize_variable_names(tree: ast.AST) -> ast.AST:

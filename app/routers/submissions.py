@@ -11,7 +11,8 @@ router = APIRouter(prefix = "/api/submissions", tags = ["submissions"])
 async def create_submission(req: SubmissionCreateRequest, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     if req.language != 'python':
         return error_resp(400, "only python is supported!")
-    if len(req.source_code.encode("utf-8")) > 64*1024:
+    from app.config import MAX_SOURCE_CODE_SIZE
+    if len(req.source_code.encode("utf-8")) > MAX_SOURCE_CODE_SIZE:
         return error_resp(400, "source code exceeds 64 KiB")
     
     submission = await create_and_judge(user["id"], req.problem_id, req.language, req.source_code, background_tasks)

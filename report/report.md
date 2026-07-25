@@ -340,7 +340,7 @@
 ### Special Judge（进阶模块）
 - SPJ 代码随题目一起通过 `spj_code` 字段创建/更新（`POST/PUT /api/problems`）
 - 题目 `judge_mode` 设为 `"spj"` 时启用 Special Judge
-- SPJ 程序接收三个命令行参数：`<input_file> <output_file> <expected_file>`，退出码 0 表示 AC，非 0 表示 WA
+- SPJ 是一个 Python 脚本，需定义 `judge(input_data, expected_output, actual_output)` 函数，返回 `{"accepted": bool, "message": str}` 字典。评测时系统将测试数据写入临时文件，由 SPJ 脚本读取后调用 judge 函数判定结果
 
 ### 统一错误响应
 所有错误返回统一格式：`{"code": <HTTP状态码>, "message": "<错误信息>", "data": null}`

@@ -74,8 +74,8 @@ async def test_log_output_truncated(client: AsyncClient):
     resp2 = await client.get(f"/api/submissions/{sid}/logs")
     logs = resp2.json()["data"]
     for log in logs:
-        if log.get("actual_output"):
-            assert len(log["actual_output"]) <= 5000, "输出未被截断"
+        if log.get("stdout"):
+            assert len(log["stdout"]) <= 5000, "输出未被截断"
 
 
 # --- 审计记录：教师查看完整日志应产生审计记录 ---

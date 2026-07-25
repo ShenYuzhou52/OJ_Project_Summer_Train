@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
 from app.models.problem import ProblemCreateRequest, ProblemUpdateRequest
@@ -10,7 +10,7 @@ router = APIRouter(prefix = "/api/problems", tags = ["problems"]) # 统一加路
 
 @router.get("") #告诉FastAPI当收到某个HTTP方法的请求时应该调用这个函数
 async def list_problems(
-    page: int = 1, page_size: int = 20,
+    page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
     search: str = None, difficulty: str = None, tag: str = None,
     request: Request = None
 ):
@@ -71,9 +71,17 @@ async def create_problem(req: ProblemCreateRequest, user: dict = Depends(Require
 
 @router.put("/{problem_id}")
 async def update_problem(problem_id: str, req: ProblemUpdateRequest, user: dict = Depends(RequireRole("teacher","admin"))):
-    if not await problem_repo.problem_exists(problem_id):
+    current = await problem_repo.get_problem_by_id(problem_id)
+    if not current:
         return error_resp(404, "problem not found!")
     update_data = {k: v for k, v in req.model_dump().items() if v is not None}
+
+    # 合并后校验：judge_mode 为 spj 时必须有 spj_code
+    merged_judge_mode = update_data.get("judge_mode", current.get("judge_mode", "standard"))
+    merged_spj_code = update_data.get("spj_code", current.get("spj_code"))
+    if merged_judge_mode == "spj" and not merged_spj_code:
+        return error_resp(422, "judge_mode 为 spj 时必须提供 spj_code")
+
     problem = await problem_repo.update_problem(problem_id, update_data)
     return ok(problem, message = "problem updated")
 

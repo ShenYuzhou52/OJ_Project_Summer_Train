@@ -64,15 +64,20 @@ async def judge_submission(submission_id: str):
                 break
             raw_result = await run_single_case(source_code, tc["input"], time_limit)
 
-            # 超时和系统错误可以直接判定
-            if raw_result["result"] in ("TLE", "SE"):
+            # 超时、系统错误、运行错误可以直接判定
+            if raw_result["result"] in ("TLE", "SE", "RE"):
                 case_result = raw_result["result"]
                 exit_code = raw_result["exit_code"]
                 stdout = raw_result["stdout"]
                 stderr = raw_result["stderr"]
                 time_used = raw_result["time_used"]
                 score = 0
-                message = "Time Limit Exceeded" if case_result == "TLE" else "System Error"
+                if case_result == "TLE":
+                    message = "Time Limit Exceeded"
+                elif case_result == "RE":
+                    message = "Runtime Error"
+                else:
+                    message = "System Error"
                 stop_early = True
 
                 # 审计日志：发生超时 / 发生评测系统错误
